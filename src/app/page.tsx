@@ -1,7 +1,9 @@
 "use client";
 import { useState } from "react";
-import { Link2, Download, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Link2, Download, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronUp, LogIn } from "lucide-react";
 import { saveConversion } from "@/lib/supabase-actions";
+import { useAuth } from "@/context/AuthContext";
 
 interface ConversionResult {
   jobId: string;
@@ -18,9 +20,12 @@ export default function HomePage() {
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [result, setResult] = useState<ConversionResult | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const { user } = useAuth();
+  const router = useRouter();
 
   async function handleConvert() {
     if (!url.trim()) return;
+    if (!user) { router.push("/login"); return; }
     setStatus("loading");
     setErrorMsg("");
     try {
@@ -33,7 +38,7 @@ export default function HomePage() {
       if (!res.ok) throw new Error(data.error || "Erro na conversão");
       setResult(data);
       setStatus("done");
-      await saveConversion({ url, appName: data.appName, downloadUrl: data.downloadUrl });
+      await saveConversion({ userId: user.id, url, appName: data.appName, downloadUrl: data.downloadUrl });
     } catch (e: unknown) {
       setErrorMsg(e instanceof Error ? e.message : "Erro desconhecido");
       setStatus("error");
@@ -42,7 +47,6 @@ export default function HomePage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-16">
-      {/* Hero */}
       <div className="text-center mb-12">
         <div className="inline-flex items-center gap-2 badge bg-brand-600/20 text-brand-500 mb-4">
           <span className="w-2 h-2 bg-brand-500 rounded-full animate-pulse" />
@@ -56,7 +60,6 @@ export default function HomePage() {
         </p>
       </div>
 
-      {/* Converter card */}
       <div className="glass-card p-6 space-y-4">
         <div className="flex items-center gap-3">
           <Link2 className="text-brand-500 shrink-0" size={20} />
@@ -69,7 +72,6 @@ export default function HomePage() {
           />
         </div>
 
-        {/* Advanced options */}
         <button
           className="text-white/50 hover:text-white/80 text-sm flex items-center gap-1 transition-colors"
           onClick={() => setShowAdvanced((v) => !v)}
@@ -82,38 +84,25 @@ export default function HomePage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-white/60 text-xs mb-1 block">Nome do app</label>
-              <input
-                className="input-field text-sm"
-                placeholder="Meu App"
-                value={appName}
-                onChange={(e) => setAppName(e.target.value)}
-              />
+              <input className="input-field text-sm" placeholder="Meu App" value={appName} onChange={(e) => setAppName(e.target.value)} />
             </div>
             <div>
               <label className="text-white/60 text-xs mb-1 block">Package name</label>
-              <input
-                className="input-field text-sm"
-                placeholder="com.exemplo.meuapp"
-                value={packageName}
-                onChange={(e) => setPackageName(e.target.value)}
-              />
+              <input className="input-field text-sm" placeholder="com.exemplo.meuapp" value={packageName} onChange={(e) => setPackageName(e.target.value)} />
             </div>
           </div>
         )}
 
-        <button
-          className="btn-primary w-full justify-center"
-          onClick={handleConvert}
-          disabled={!url.trim() || status === "loading"}
-        >
-          {status === "loading" ? (
-            <><Loader2 size={18} className="animate-spin" /> Gerando APK...</>
-          ) : (
-            <><Download size={18} /> Gerar APK</>
-          )}
-        </button>
+        {!user ? (
+          <button className="btn-primary w-full justify-center" onClick={() => router.push("/login")}>
+            <LogIn size={18} /> Entre para gerar APKs
+          </button>
+        ) : (
+          <button className="btn-primary w-full justify-center" onClick={handleConvert} disabled={!url.trim() || status === "loading"}>
+            {status === "loading" ? <><Loader2 size={18} className="animate-spin" /> Gerando APK...</> : <><Download size={18} /> Gerar APK</>}
+          </button>
+        )}
 
-        {/* States */}
         {status === "error" && (
           <div className="flex items-center gap-2 text-red-400 bg-red-500/10 rounded-xl px-4 py-3 text-sm">
             <AlertCircle size={16} /> {errorMsg}
@@ -129,23 +118,18 @@ export default function HomePage() {
               <p>App: <span className="text-white">{result.appName}</span></p>
               <p>Package: <span className="text-white font-mono">{result.packageName}</span></p>
             </div>
-            <a
-              href={result.downloadUrl}
-              download
-              className="btn-primary w-full justify-center"
-            >
+            <a href={result.downloadUrl} download className="btn-primary w-full justify-center">
               <Download size={16} /> Baixar APK
             </a>
           </div>
         )}
       </div>
 
-      {/* Info cards */}
       <div className="grid grid-cols-3 gap-4 mt-8">
         {[
           { title: "TWA nativo", desc: "Usa Trusted Web Activity do Google para máxima compatibilidade" },
           { title: "Play Store ready", desc: "APK assinado pronto para envio à Google Play" },
-          { title: "Salvo no histórico", desc: "Todas conversões ficam salvas para redownload" },
+          { title: "Histórico pessoal", desc: "Cada usuário tem seu próprio histórico de conversões" },
         ].map((item) => (
           <div key={item.title} className="glass-card p-4">
             <h3 className="font-semibold text-white text-sm mb-1">{item.title}</h3>

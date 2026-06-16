@@ -1,0 +1,141 @@
+{
+  "name": "APK Builder - Converter URL para APK",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "convert-apk",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "convert-apk"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://pwabuilder-api.azurewebsites.net/generatezip",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "siteUrl", "value": "={{ $json.body.url }}" },
+            { "name": "platform", "value": "android" }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "name": "Chamar PWABuilder API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "field1",
+              "name": "jobId",
+              "value": "={{ $now.toISO() }}-{{ $json.body.packageName || 'apk' }}",
+              "type": "string"
+            },
+            {
+              "id": "field2",
+              "name": "downloadUrl",
+              "value": "={{ $json.downloadUrl || $json.url || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "field3",
+              "name": "appName",
+              "value": "={{ $('Webhook').item.json.body.appName || 'MeuApp' }}",
+              "type": "string"
+            },
+            {
+              "id": "field4",
+              "name": "packageName",
+              "value": "={{ $('Webhook').item.json.body.packageName || 'com.apkbuilder.app' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "Montar Resposta",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ jobId: $json.jobId, downloadUrl: $json.downloadUrl, appName: $json.appName, packageName: $json.packageName }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000004",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ error: $json.message || 'Erro na conversão' }) }}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "id": "a1b2c3d4-0005-0005-0005-000000000005",
+      "name": "Responder Erro",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [680, 480]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Chamar PWABuilder API", "type": "main", "index": 0 }]
+      ]
+    },
+    "Chamar PWABuilder API": {
+      "main": [
+        [{ "node": "Montar Resposta", "type": "main", "index": 0 }],
+        [{ "node": "Responder Erro", "type": "main", "index": 0 }]
+      ]
+    },
+    "Montar Resposta": {
+      "main": [
+        [{ "node": "Responder", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "apkbuilder"
+  },
+  "id": "workflow-convert-apk",
+  "tags": ["apk", "converter"]
+}
