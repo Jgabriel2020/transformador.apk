@@ -41,7 +41,8 @@
       "name": "Buscar AndroidManifest",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [288, -544]
+      "position": [288, -544],
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -59,7 +60,8 @@
       "name": "Buscar build.gradle",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [288, -352]
+      "position": [288, -352],
+      "continueOnFail": true
     },
     {
       "parameters": {
