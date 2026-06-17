@@ -1,0 +1,57 @@
+name: Build WebView APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      site_url:
+        description: 'URL do site'
+        required: true
+      app_name:
+        description: 'Nome do app'
+        required: true
+        default: 'MeuApp'
+      package_name:
+        description: 'Package name'
+        required: true
+        default: 'com.apkbuilder.app'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Inject URL and app info
+        run: |
+          sed -i "s|APP_URL_PLACEHOLDER|${{ github.event.inputs.site_url }}|g" app/src/main/java/com/apkbuilder/webview/MainActivity.kt
+          sed -i "s|APP_NAME_PLACEHOLDER|${{ github.event.inputs.app_name }}|g" app/src/main/res/values/strings.xml
+          sed -i "s|com.apkbuilder.webview|${{ github.event.inputs.package_name }}|g" app/build.gradle
+          sed -i "s|com.apkbuilder.webview|${{ github.event.inputs.package_name }}|g" app/src/main/java/com/apkbuilder/webview/MainActivity.kt
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Build APK
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Sign APK (debug keystore)
+        run: |
+          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | tail -1)/apksigner sign \
+            --ks ~/.android/debug.keystore \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --out app/build/outputs/apk/release/app-signed.apk \
+            app/build/outputs/apk/release/app-release-unsigned.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webview-apk
+          path: app/build/outputs/apk/release/app-signed.apk
+          retention-days: 7
