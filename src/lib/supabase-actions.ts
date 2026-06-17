@@ -8,13 +8,13 @@ export async function saveConversion({
   downloadUrl,
 }: {
   userId: string;
-  url: string;
+  url?: string | null;
   appName: string;
   downloadUrl: string;
 }) {
   const { error } = await supabase.from("conversions").insert({
-    user_id: userId,
-    url,
+    user_id: userId || null,
+    url: url || null,
     app_name: appName,
     download_url: downloadUrl,
   });
