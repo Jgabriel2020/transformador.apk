@@ -41,7 +41,7 @@
       "name": "Buscar AndroidManifest",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [288, -544],
+      "position": [288, -448],
       "continueOnFail": true
     },
     {
@@ -60,18 +60,18 @@
       "name": "Buscar build.gradle",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [288, -352],
+      "position": [512, -448],
       "continueOnFail": true
     },
     {
       "parameters": {
-        "jsCode": "const manifestItem = $('Buscar AndroidManifest').first();\nconst gradleItem = $('Buscar build.gradle').first();\nconst base = $('Extrair dados').first().json;\n\nlet manifestContent = 'Não encontrado';\nlet gradleContent = 'Não encontrado';\n\ntry {\n  if (manifestItem?.json?.content) {\n    manifestContent = Buffer.from(manifestItem.json.content, 'base64').toString('utf-8');\n  }\n} catch(e) {}\n\ntry {\n  if (gradleItem?.json?.content) {\n    gradleContent = Buffer.from(gradleItem.json.content, 'base64').toString('utf-8');\n  }\n} catch(e) {}\n\nconst prompt = `Você é um especialista em Android e Google Play Store.\nAnalise o projeto e retorne APENAS um JSON válido com esta estrutura exata:\n{\n  \"score\": <número 0-100>,\n  \"summary\": \"<resumo em 1-2 frases>\",\n  \"suggestions\": [\n    {\n      \"category\": \"<Segurança|UI/UX|Performance|Privacidade|Acessibilidade|Manifesto|Target SDK>\",\n      \"severity\": \"<critical|warning|info>\",\n      \"title\": \"<título curto>\",\n      \"description\": \"<descrição do problema>\",\n      \"fix\": \"<como corrigir>\"\n    }\n  ]\n}\n\nAvalie: targetSdkVersion (deve ser >= 34), permissões desnecessárias, política de privacidade, ícones adaptativos, ProGuard/R8, assinatura APK, APIs obsoletas, acessibilidade.\n\nRepositório: ${base.repoUrl}\n${base.apkInfo ? 'APK: ' + base.apkInfo : ''}\n\n=== AndroidManifest.xml ===\n${manifestContent}\n\n=== app/build.gradle ===\n${gradleContent}`;\n\nreturn [{ json: { prompt } }];"
+        "jsCode": "const base = $('Extrair dados').first().json;\n\nlet manifestContent = 'Não encontrado';\nlet gradleContent = 'Não encontrado';\n\ntry {\n  const manifestJson = $('Buscar AndroidManifest').first()?.json;\n  if (manifestJson?.content) {\n    manifestContent = Buffer.from(manifestJson.content, 'base64').toString('utf-8');\n  }\n} catch(e) {}\n\ntry {\n  const gradleJson = $input.first()?.json;\n  if (gradleJson?.content) {\n    gradleContent = Buffer.from(gradleJson.content, 'base64').toString('utf-8');\n  }\n} catch(e) {}\n\nconst prompt = `Você é um especialista em Android e Google Play Store.\nAnalise o projeto e retorne APENAS um JSON válido com esta estrutura exata:\n{\n  \"score\": <número 0-100>,\n  \"summary\": \"<resumo em 1-2 frases>\",\n  \"suggestions\": [\n    {\n      \"category\": \"<Segurança|UI/UX|Performance|Privacidade|Acessibilidade|Manifesto|Target SDK>\",\n      \"severity\": \"<critical|warning|info>\",\n      \"title\": \"<título curto>\",\n      \"description\": \"<descrição do problema>\",\n      \"fix\": \"<como corrigir>\"\n    }\n  ]\n}\n\nAvalie: targetSdkVersion (deve ser >= 34), permissões desnecessárias, política de privacidade, ícones adaptativos, ProGuard/R8, assinatura APK, APIs obsoletas, acessibilidade.\n\nRepositório: ${base.repoUrl}\n${base.apkInfo ? 'APK: ' + base.apkInfo : ''}\n\n=== AndroidManifest.xml ===\n${manifestContent}\n\n=== app/build.gradle ===\n${gradleContent}`;\n\nreturn [{ json: { prompt } }];"
       },
       "id": "27d3f6a5-555e-4c72-ba52-eb4b43700345",
       "name": "Montar prompt Gemini",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [512, -448]
+      "position": [736, -448]
     },
     {
       "parameters": {
@@ -92,7 +92,7 @@
       "name": "Chamar Gemini",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [736, -448]
+      "position": [960, -448]
     },
     {
       "parameters": {
@@ -102,7 +102,7 @@
       "name": "Parsear resposta Gemini",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, -448]
+      "position": [1184, -448]
     },
     {
       "parameters": {
@@ -114,7 +114,7 @@
       "name": "Responder",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1184, -448]
+      "position": [1408, -448]
     }
   ],
   "connections": {
@@ -122,13 +122,10 @@
       "main": [[{ "node": "Extrair dados", "type": "main", "index": 0 }]]
     },
     "Extrair dados": {
-      "main": [[
-        { "node": "Buscar AndroidManifest", "type": "main", "index": 0 },
-        { "node": "Buscar build.gradle", "type": "main", "index": 0 }
-      ]]
+      "main": [[{ "node": "Buscar AndroidManifest", "type": "main", "index": 0 }]]
     },
     "Buscar AndroidManifest": {
-      "main": [[{ "node": "Montar prompt Gemini", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Buscar build.gradle", "type": "main", "index": 0 }]]
     },
     "Buscar build.gradle": {
       "main": [[{ "node": "Montar prompt Gemini", "type": "main", "index": 0 }]]
