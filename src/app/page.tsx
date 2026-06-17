@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Link2, Download, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronUp, LogIn } from "lucide-react";
+import { Link2, Download, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronUp, LogIn, ExternalLink } from "lucide-react";
 import { saveConversion } from "@/lib/supabase-actions";
 import { useAuth } from "@/context/AuthContext";
 
@@ -112,14 +112,15 @@ export default function HomePage() {
         {status === "done" && result && (
           <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 space-y-3">
             <div className="flex items-center gap-2 text-green-400 font-medium">
-              <CheckCircle size={18} /> APK gerado com sucesso!
+              <CheckCircle size={18} /> APK pronto para baixar!
             </div>
             <div className="text-sm text-white/60 space-y-1">
               <p>App: <span className="text-white">{result.appName}</span></p>
               <p>Package: <span className="text-white font-mono">{result.packageName}</span></p>
             </div>
-            <a href={result.downloadUrl} download className="btn-primary w-full justify-center">
-              <Download size={16} /> Baixar APK
+            <p className="text-white/40 text-xs">O PWABuilder vai abrir com seu site analisado. Clique em "Android" e depois "Download".</p>
+            <a href={result.downloadUrl as string} target="_blank" rel="noopener noreferrer" className="btn-primary w-full justify-center">
+              <Download size={16} /> Baixar APK no PWABuilder <ExternalLink size={13} />
             </a>
           </div>
         )}
