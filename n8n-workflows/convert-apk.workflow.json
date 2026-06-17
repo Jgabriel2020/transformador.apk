@@ -8,11 +8,11 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "id": "2ef3c951-fd9b-4c2e-ab0c-504963864c4d",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [-160, -176],
       "webhookId": "convert-apk"
     },
     {
@@ -32,15 +32,13 @@
             { "name": "platform", "value": "android" }
           ]
         },
-        "options": {
-          "timeout": 60000
-        }
+        "options": { "timeout": 60000 }
       },
-      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "id": "fba43244-9a19-4021-80d9-ed01b397ada0",
       "name": "Chamar PWABuilder API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [460, 300]
+      "position": [64, -176]
     },
     {
       "parameters": {
@@ -49,7 +47,7 @@
             {
               "id": "field1",
               "name": "jobId",
-              "value": "={{ $now.toISO() }}-{{ $json.body.packageName || 'apk' }}",
+              "value": "={{ $now.toISO() }}",
               "type": "string"
             },
             {
@@ -69,73 +67,93 @@
               "name": "packageName",
               "value": "={{ $('Webhook').item.json.body.packageName || 'com.apkbuilder.app' }}",
               "type": "string"
+            },
+            {
+              "id": "field5",
+              "name": "userId",
+              "value": "={{ $('Webhook').item.json.body.userId || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "field6",
+              "name": "url",
+              "value": "={{ $('Webhook').item.json.body.url }}",
+              "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "id": "7a5080b3-16bc-42a5-88e5-248c138c116c",
       "name": "Montar Resposta",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [680, 300]
+      "position": [288, -176]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://edegxmnfvffxvjscllxh.supabase.co/rest/v1/conversions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVkZWd4bW5mdmZmeHZqc2NsbHhoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDU5MTUsImV4cCI6MjA5NzIyMTkxNX0.nyy5-dqjaVn7wOM1ZTtROm_lxJstZy44KUL1e8zE0Cc" },
+            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVkZWd4bW5mdmZmeHZqc2NsbHhoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDU5MTUsImV4cCI6MjA5NzIyMTkxNX0.nyy5-dqjaVn7wOM1ZTtROm_lxJstZy44KUL1e8zE0Cc" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ user_id: $json.userId || null, url: $json.url, app_name: $json.appName, download_url: $json.downloadUrl }) }}",
+        "options": {}
+      },
+      "id": "aabbcc11-1111-1111-1111-111111111111",
+      "name": "Salvar no Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [512, -176]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ jobId: $json.jobId, downloadUrl: $json.downloadUrl, appName: $json.appName, packageName: $json.packageName }) }}",
-        "options": {
-          "responseCode": 200
-        }
+        "responseBody": "={{ JSON.stringify({ jobId: $('Montar Resposta').item.json.jobId, downloadUrl: $('Montar Resposta').item.json.downloadUrl, appName: $('Montar Resposta').item.json.appName, packageName: $('Montar Resposta').item.json.packageName }) }}",
+        "options": { "responseCode": 200 }
       },
-      "id": "a1b2c3d4-0004-0004-0004-000000000004",
+      "id": "85bf2150-8b81-46f1-969b-ff50db522db6",
       "name": "Responder",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [900, 300]
+      "position": [736, -176]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ error: $json.message || 'Erro na conversão' }) }}",
-        "options": {
-          "responseCode": 500
-        }
+        "options": { "responseCode": 500 }
       },
-      "id": "a1b2c3d4-0005-0005-0005-000000000005",
+      "id": "0f2b3287-1d4a-4d78-8883-aa873d7812ff",
       "name": "Responder Erro",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [680, 480]
+      "position": [288, 16]
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [
-        [{ "node": "Chamar PWABuilder API", "type": "main", "index": 0 }]
-      ]
+      "main": [[{ "node": "Chamar PWABuilder API", "type": "main", "index": 0 }]]
     },
     "Chamar PWABuilder API": {
-      "main": [
-        [{ "node": "Montar Resposta", "type": "main", "index": 0 }],
-        [{ "node": "Responder Erro", "type": "main", "index": 0 }]
-      ]
+      "main": [[{ "node": "Montar Resposta", "type": "main", "index": 0 }]]
     },
     "Montar Resposta": {
-      "main": [
-        [{ "node": "Responder", "type": "main", "index": 0 }]
-      ]
+      "main": [[{ "node": "Salvar no Supabase", "type": "main", "index": 0 }]]
+    },
+    "Salvar no Supabase": {
+      "main": [[{ "node": "Responder", "type": "main", "index": 0 }]]
     }
   },
   "active": true,
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "versionId": "1",
-  "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "apkbuilder"
-  },
-  "id": "workflow-convert-apk",
-  "tags": ["apk", "converter"]
+  "settings": { "executionOrder": "v1" },
+  "meta": { "instanceId": "d117ea45bc33fa797e2742ccb51a9a9f1db4eaa28394d14f826234ab966c2c84" }
 }
