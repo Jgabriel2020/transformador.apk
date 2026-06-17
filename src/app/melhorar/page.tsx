@@ -2,7 +2,7 @@
 import { useState } from "react";
 import {
   Sparkles, Github, Upload, Loader2, CheckCircle, AlertCircle,
-  ChevronRight, ShieldCheck, Smartphone, Zap, Eye
+  ChevronRight, ShieldCheck, Smartphone, Zap, Eye, FileDown, X
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -41,6 +41,8 @@ export default function MelhorarPage() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [showFilePrompt, setShowFilePrompt] = useState(false);
+  const [generatingFile, setGeneratingFile] = useState(false);
 
   async function handleAnalyze() {
     if (inputMode === "repo" && !repoUrl) return;
@@ -59,9 +61,35 @@ export default function MelhorarPage() {
       if (!res.ok) throw new Error(data.error || "Erro na análise");
       setResult(data);
       setStatus("done");
+      setShowFilePrompt(true);
     } catch (e: unknown) {
       setErrorMsg(e instanceof Error ? e.message : "Erro desconhecido");
       setStatus("error");
+    }
+  }
+
+  async function handleGenerateFile() {
+    if (!result) return;
+    setGeneratingFile(true);
+    try {
+      const res = await fetch("/api/generate-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ result, repoUrl }),
+      });
+      if (!res.ok) throw new Error("Erro ao gerar arquivo");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "correcoes-play-store.md";
+      a.click();
+      URL.revokeObjectURL(url);
+      setShowFilePrompt(false);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setGeneratingFile(false);
     }
   }
 
@@ -182,6 +210,30 @@ export default function MelhorarPage() {
               </div>
             </div>
           </div>
+
+          {/* File generation prompt */}
+          {showFilePrompt && (
+            <div className="glass-card border border-accent-500/40 bg-accent-600/10 p-4 flex items-center gap-4">
+              <FileDown size={22} className="text-purple-400 shrink-0" />
+              <div className="flex-1">
+                <p className="text-white font-medium text-sm">Deseja gerar um arquivo com todas as correções?</p>
+                <p className="text-white/50 text-xs mt-0.5">Um relatório <code className="text-purple-300">.md</code> com todas as sugestões e como corrigir cada uma.</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={handleGenerateFile}
+                  disabled={generatingFile}
+                  className="btn-primary py-2 px-4 text-sm"
+                  style={{ background: "linear-gradient(135deg, #7c3aed, #0284c7)" }}
+                >
+                  {generatingFile ? <><Loader2 size={14} className="animate-spin" /> Gerando...</> : <><FileDown size={14} /> Sim, gerar</>}
+                </button>
+                <button onClick={() => setShowFilePrompt(false)} className="text-white/40 hover:text-white transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Suggestions */}
           <div>
