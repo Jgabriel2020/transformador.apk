@@ -7,7 +7,7 @@ const GH_WORKFLOW = "build-apk.yml";
 
 export async function POST(req: NextRequest) {
   try {
-    const { url, appName, packageName } = await req.json();
+    const { url, appName, packageName, iconUrl } = await req.json();
     if (!url) return NextResponse.json({ error: "URL obrigatória" }, { status: 400 });
 
     let hostname = "app";
@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
             site_url: url,
             app_name: resolvedName,
             package_name: resolvedPackage,
+            icon_url: iconUrl || "",
           },
         }),
       }

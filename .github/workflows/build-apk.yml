@@ -14,6 +14,10 @@ on:
         description: 'Package name'
         required: true
         default: 'com.apkbuilder.app'
+      icon_url:
+        description: 'URL do ícone (opcional)'
+        required: false
+        default: ''
 
 jobs:
   build:
@@ -36,6 +40,31 @@ jobs:
         with:
           gradle-version: '8.4'
 
+      - name: Install ImageMagick
+        run: sudo apt-get install -y imagemagick
+
+      - name: Process icon
+        working-directory: android-builder
+        run: |
+          ICON_URL="${{ github.event.inputs.icon_url }}"
+          if [ -n "$ICON_URL" ]; then
+            curl -L -o icon_original.png "$ICON_URL"
+            # Gera todos os tamanhos de mipmap
+            convert icon_original.png -resize 48x48   app/src/main/res/mipmap-mdpi/ic_launcher.png
+            convert icon_original.png -resize 72x72   app/src/main/res/mipmap-hdpi/ic_launcher.png
+            convert icon_original.png -resize 96x96   app/src/main/res/mipmap-xhdpi/ic_launcher.png
+            convert icon_original.png -resize 144x144 app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+            convert icon_original.png -resize 192x192 app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+            # Ícones redondos (mesmo arquivo)
+            cp app/src/main/res/mipmap-mdpi/ic_launcher.png    app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+            cp app/src/main/res/mipmap-hdpi/ic_launcher.png    app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+            cp app/src/main/res/mipmap-xhdpi/ic_launcher.png   app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+            cp app/src/main/res/mipmap-xxhdpi/ic_launcher.png  app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+            cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+            # Adiciona referência ao ícone no manifest
+            sed -i 's|<application|<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round"|' app/src/main/AndroidManifest.xml
+          fi
+
       - name: Inject URL and app info
         working-directory: android-builder
         run: |
@@ -47,7 +76,6 @@ jobs:
             app/build.gradle
           sed -i "s|com\.apkbuilder\.webview|${{ github.event.inputs.package_name }}|g" \
             app/src/main/AndroidManifest.xml
-          # Fix package declaration in Kotlin file
           sed -i "1s|package com\.apkbuilder\.webview|package ${{ github.event.inputs.package_name }}|" \
             app/src/main/java/com/apkbuilder/webview/MainActivity.kt
 

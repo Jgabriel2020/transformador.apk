@@ -1,8 +1,9 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Link2, Download, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronUp, LogIn } from "lucide-react";
+import { Link2, Download, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronUp, LogIn, ImagePlus, X } from "lucide-react";
 import { saveConversion } from "@/lib/supabase-actions";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
 type Status = "idle" | "loading" | "building" | "done" | "error";
@@ -27,6 +28,8 @@ export default function HomePage() {
   const [url, setUrl] = useState("");
   const [appName, setAppName] = useState("");
   const [packageName, setPackageName] = useState("");
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [result, setResult] = useState<BuildResult | null>(null);
@@ -37,7 +40,6 @@ export default function HomePage() {
   const { user } = useAuth();
   const router = useRouter();
 
-  // Incrementa step de loading visualmente
   useEffect(() => {
     if (status !== "building") return;
     const interval = setInterval(() => {
@@ -47,55 +49,64 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, [status]);
 
-  // Polling do status do build
   useEffect(() => {
     if (status !== "building" || !result?.runId) return;
-
     async function poll() {
       const res = await fetch(`/api/build-status?runId=${result!.runId}`);
       const data = await res.json();
-
       if (data.status === "completed" && data.conclusion === "success" && data.downloadUrl) {
         clearInterval(pollRef.current!);
         setResult((r) => ({ ...r!, downloadUrl: data.downloadUrl }));
         setStatus("done");
-        if (user) {
-          await saveConversion({
-            userId: user.id,
-            url,
-            appName: result!.appName,
-            downloadUrl: data.downloadUrl,
-          });
-        }
+        if (user) await saveConversion({ userId: user.id, url, appName: result!.appName, downloadUrl: data.downloadUrl });
       } else if (data.status === "completed" && data.conclusion !== "success") {
         clearInterval(pollRef.current!);
         setErrorMsg("Build falhou no GitHub Actions. Tente novamente.");
         setStatus("error");
       }
     }
-
     pollRef.current = setInterval(poll, 10000);
     return () => clearInterval(pollRef.current!);
   }, [status, result?.runId]);
 
+  function handleIconChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIconFile(file);
+    setIconPreview(URL.createObjectURL(file));
+  }
+
+  function removeIcon() {
+    setIconFile(null);
+    setIconPreview(null);
+  }
+
+  async function uploadIcon(): Promise<string | null> {
+    if (!iconFile) return null;
+    const ext = iconFile.name.split(".").pop();
+    const path = `icons/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("apk-icons").upload(path, iconFile, { upsert: true });
+    if (error) { console.error("Icon upload error:", error.message); return null; }
+    const { data } = supabase.storage.from("apk-icons").getPublicUrl(path);
+    return data.publicUrl;
+  }
+
   async function handleConvert() {
     if (!url.trim()) return;
     if (!user) { router.push("/login"); return; }
-
     setStatus("loading");
     setErrorMsg("");
     setBuildStep(0);
     setElapsed(0);
-
     try {
+      const iconUrl = await uploadIcon();
       const res = await fetch("/api/convert", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, appName: appName || undefined, packageName: packageName || undefined }),
+        body: JSON.stringify({ url, appName: appName || undefined, packageName: packageName || undefined, iconUrl }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-
       setResult({ runId: data.runId, appName: data.appName, packageName: data.packageName });
       setStatus("building");
     } catch (e: unknown) {
@@ -112,9 +123,7 @@ export default function HomePage() {
           Qualquer site → APK real
         </div>
         <h1 className="text-4xl font-bold text-white mb-4">Transforme qualquer site em APK</h1>
-        <p className="text-white/60 text-lg">
-          Cole a URL de qualquer site e gere um APK Android com WebView nativo.
-        </p>
+        <p className="text-white/60 text-lg">Cole a URL de qualquer site e gere um APK Android com WebView nativo.</p>
       </div>
 
       <div className="glass-card p-6 space-y-4">
@@ -139,14 +148,39 @@ export default function HomePage() {
         </button>
 
         {showAdvanced && (
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-white/60 text-xs mb-1 block">Nome do app</label>
-              <input className="input-field text-sm" placeholder="Meu App" value={appName} onChange={(e) => setAppName(e.target.value)} />
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-white/60 text-xs mb-1 block">Nome do app</label>
+                <input className="input-field text-sm" placeholder="Meu App" value={appName} onChange={(e) => setAppName(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-white/60 text-xs mb-1 block">Package name</label>
+                <input className="input-field text-sm" placeholder="com.exemplo.app" value={packageName} onChange={(e) => setPackageName(e.target.value)} />
+              </div>
             </div>
+
+            {/* Logo upload */}
             <div>
-              <label className="text-white/60 text-xs mb-1 block">Package name</label>
-              <input className="input-field text-sm" placeholder="com.exemplo.app" value={packageName} onChange={(e) => setPackageName(e.target.value)} />
+              <label className="text-white/60 text-xs mb-1 block">Logo do app (PNG/JPG, recomendado 512x512)</label>
+              {iconPreview ? (
+                <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl p-3">
+                  <img src={iconPreview} alt="Logo" className="w-12 h-12 rounded-xl object-cover" />
+                  <div className="flex-1">
+                    <p className="text-white text-sm">{iconFile?.name}</p>
+                    <p className="text-white/40 text-xs">{iconFile ? (iconFile.size / 1024).toFixed(0) + " KB" : ""}</p>
+                  </div>
+                  <button onClick={removeIcon} className="text-white/40 hover:text-white transition-colors">
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex items-center gap-3 cursor-pointer bg-white/5 border border-white/10 border-dashed rounded-xl p-4 hover:bg-white/10 transition-colors">
+                  <ImagePlus size={20} className="text-white/40" />
+                  <span className="text-white/40 text-sm">Clique para adicionar logo</span>
+                  <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleIconChange} />
+                </label>
+              )}
             </div>
           </div>
         )}
@@ -162,7 +196,7 @@ export default function HomePage() {
             disabled={!url.trim() || status === "loading" || status === "building"}
           >
             {status === "loading" ? (
-              <><Loader2 size={18} className="animate-spin" /> Iniciando...</>
+              <><Loader2 size={18} className="animate-spin" /> {iconFile ? "Enviando logo..." : "Iniciando..."}</>
             ) : status === "building" ? (
               <><Loader2 size={18} className="animate-spin" /> Gerando APK...</>
             ) : (
@@ -171,7 +205,6 @@ export default function HomePage() {
           </button>
         )}
 
-        {/* Building progress */}
         {status === "building" && (
           <div className="bg-brand-600/10 border border-brand-500/30 rounded-xl p-4 space-y-3">
             <div className="flex items-center justify-between text-sm">
@@ -206,10 +239,7 @@ export default function HomePage() {
               <p>App: <span className="text-white">{result.appName}</span></p>
               <p>Package: <span className="text-white font-mono">{result.packageName}</span></p>
             </div>
-            <a
-              href={`/api/download?runId=${result.runId}`}
-              className="btn-primary w-full justify-center"
-            >
+            <a href={`/api/download?runId=${result.runId}`} className="btn-primary w-full justify-center">
               <Download size={16} /> Baixar APK
             </a>
           </div>
@@ -220,7 +250,7 @@ export default function HomePage() {
         {[
           { title: "WebView nativo", desc: "APK real compilado com Kotlin e Android SDK" },
           { title: "Qualquer URL", desc: "Funciona com qualquer site, não precisa de manifest" },
-          { title: "Histórico pessoal", desc: "Cada usuário tem seu próprio histórico de conversões" },
+          { title: "Logo personalizada", desc: "Adicione o ícone do seu app nas opções avançadas" },
         ].map((item) => (
           <div key={item.title} className="glass-card p-4">
             <h3 className="font-semibold text-white text-sm mb-1">{item.title}</h3>
