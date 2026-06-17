@@ -85,7 +85,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [{ text: $json.prompt }] }] }) }}",
+        "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [{ text: $json.prompt }] }], generationConfig: { responseMimeType: 'application/json' } }) }}",
         "options": { "timeout": 60000 }
       },
       "id": "gemini-call-node-001",
@@ -96,7 +96,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const response = $input.first().json;\nconst text = response?.candidates?.[0]?.content?.parts?.[0]?.text || '';\n\nconst jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\nif (!jsonMatch) throw new Error('Gemini não retornou JSON válido: ' + text.substring(0, 200));\n\nconst parsed = JSON.parse(jsonMatch[0]);\nreturn [{ json: parsed }];"
+        "jsCode": "const response = $input.first().json;\nconst text = response?.candidates?.[0]?.content?.parts?.[0]?.text || '';\nif (!text) throw new Error('Gemini retornou resposta vazia');\n\nlet parsed;\ntry {\n  parsed = JSON.parse(text);\n} catch(e) {\n  // fallback: tenta extrair JSON ignorando markdown\n  const clean = text.replace(/```json/gi,'').replace(/```/g,'').trim();\n  const start = clean.indexOf('{');\n  const end = clean.lastIndexOf('}');\n  if (start === -1 || end === -1) throw new Error('Nenhum JSON encontrado: ' + text.substring(0, 200));\n  const fixed = clean.substring(start, end + 1).replace(/,\\s*([}\\]])/g, '$1');\n  parsed = JSON.parse(fixed);\n}\n\nreturn [{ json: parsed }];"
       },
       "id": "parse-gemini-node-001",
       "name": "Parsear resposta Gemini",
