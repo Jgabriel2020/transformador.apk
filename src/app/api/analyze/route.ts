@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const N8N_WEBHOOK_ANALYZE = "https://webhook.jbrenno.cloud/webhook/analyze-apk";
+const N8N_WEBHOOK_ANALYZE = "https://n8n.jbrenno.cloud/webhook/analyze-apk";
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();

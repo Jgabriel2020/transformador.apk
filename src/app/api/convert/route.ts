@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const N8N_WEBHOOK_CONVERT = "https://webhook.jbrenno.cloud/webhook/convert-apk";
+const N8N_WEBHOOK_CONVERT = "https://n8n.jbrenno.cloud/webhook/convert-apk";
 
 export async function POST(req: NextRequest) {
   try {
